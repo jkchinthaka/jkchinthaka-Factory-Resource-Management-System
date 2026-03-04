@@ -39,12 +39,18 @@ async function seed() {
     // Step 2: Connect to the target database
     const db = require('../models/db');
 
-    // Step 3: Run schema (split on semicolons)
+    // Step 3: Run schema (split on semicolons, strip comment-only blocks)
     const schema = fs.readFileSync(path.join(__dirname, '../models/schema.sql'), 'utf8');
-    const statements = schema.split(';').filter(s => s.trim() && !s.trim().startsWith('--'));
+    const statements = schema.split(';')
+      .map(s => s.trim())
+      .filter(s => {
+        // Remove single-line comments, check if actual SQL remains
+        const withoutComments = s.replace(/--.*$/gm, '').trim();
+        return withoutComments.length > 0;
+      });
     for (const stmt of statements) {
       if (stmt.trim()) {
-        await db.query(stmt);
+        await db.query(stmt + ';');
       }
     }
     logger.info('Schema created successfully');

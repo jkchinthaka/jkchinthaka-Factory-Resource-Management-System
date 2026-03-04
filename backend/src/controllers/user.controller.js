@@ -10,8 +10,8 @@ const getAll = async (req, res, next) => {
     const [users] = await db.query(
       `SELECT u.id, u.name, u.email, r.name as role, u.is_active, u.last_login, u.created_at
        FROM users u JOIN roles r ON u.role_id = r.id
-       ORDER BY u.created_at DESC LIMIT ? OFFSET ?`,
-      [parseInt(limit), offset]
+       ORDER BY u.created_at DESC OFFSET ? ROWS FETCH NEXT ? ROWS ONLY`,
+      [offset, parseInt(limit)]
     );
 
     res.json({
@@ -42,12 +42,12 @@ const create = async (req, res, next) => {
     const { name, email, password, role_id } = req.body;
     const passwordHash = await bcrypt.hash(password, 10);
     const [result] = await db.query(
-      'INSERT INTO users (name, email, password_hash, role_id) VALUES (?, ?, ?, ?)',
+      'INSERT INTO users (name, email, password_hash, role_id) VALUES (?, ?, ?, ?); SELECT SCOPE_IDENTITY() AS insertId',
       [name, email, passwordHash, role_id || 3]
     );
     res.status(201).json({ id: result.insertId, name, email });
   } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Email already exists' });
+    if (error.code === 'ER_DUP_ENTRY' || error.number === 2627 || error.number === 2601) return res.status(409).json({ error: 'Email already exists' });
     next(error);
   }
 };

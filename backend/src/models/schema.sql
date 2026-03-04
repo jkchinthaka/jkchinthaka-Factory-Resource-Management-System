@@ -183,7 +183,7 @@ WHEN NOT MATCHED THEN INSERT (name, description) VALUES (source.name, source.des
 -- Seed default admin user (password: Admin@123)
 IF NOT EXISTS (SELECT 1 FROM users WHERE email = 'admin@fupms.com')
   INSERT INTO users (name, email, password_hash, role_id)
-  VALUES ('System Admin', 'admin@fupms.com', '$2a$10$XQxBj1NAqYbqVmWmhM7KOeKYjYME3MjGLCMGkSbOHGc8MQ8KdKawi', 1);
+  VALUES ('System Admin', 'admin@fupms.com', '$2a$10$ZJ3aBAvb24umIRrz2JIuFetiNRlmQA32cb1L7aqt19xrYEDinmGCK', 1);
 
 -- Seed alert thresholds
 MERGE INTO alert_thresholds AS target
