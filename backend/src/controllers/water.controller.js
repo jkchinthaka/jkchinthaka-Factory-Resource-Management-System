@@ -1,15 +1,22 @@
 const waterService = require('../services/water.service');
+const { handleDbError, emptyPaginatedResponse } = require('../utils/db-fallback');
 
 const getAll = async (req, res, next) => {
   try {
-    const result = await waterService.findAll({
-      page: parseInt(req.query.page) || 1,
-      limit: parseInt(req.query.limit) || 20,
-      sort: req.query.sort || 'date',
-      order: req.query.order,
-      startDate: req.query.startDate,
-      endDate: req.query.endDate
-    });
+    let result;
+    try {
+      result = await waterService.findAll({
+        page: parseInt(req.query.page) || 1,
+        limit: parseInt(req.query.limit) || 20,
+        sort: req.query.sort || 'date',
+        order: req.query.order,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+        filter: req.query.filter
+      });
+    } catch (dbErr) {
+      result = handleDbError(dbErr, emptyPaginatedResponse(parseInt(req.query.page) || 1, parseInt(req.query.limit) || 20));
+    }
     res.json(result);
   } catch (error) { next(error); }
 };
@@ -52,7 +59,12 @@ const remove = async (req, res, next) => {
 const getMonthlyTrend = async (req, res, next) => {
   try {
     const year = req.query.year || new Date().getFullYear();
-    const result = await waterService.getMonthlyTrend(year);
+    let result;
+    try {
+      result = await waterService.getMonthlyTrend(year);
+    } catch (dbErr) {
+      result = handleDbError(dbErr, []);
+    }
     res.json(result);
   } catch (error) { next(error); }
 };

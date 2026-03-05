@@ -1,15 +1,22 @@
 const scheduleService = require('../services/schedule.service');
+const { handleDbError, emptyPaginatedResponse } = require('../utils/db-fallback');
 
 const getAll = async (req, res, next) => {
   try {
-    const result = await scheduleService.findAll({
-      page: parseInt(req.query.page) || 1,
-      limit: parseInt(req.query.limit) || 31,
-      sort: req.query.sort || 'day',
-      order: req.query.order || 'asc',
-      startDate: req.query.startDate,
-      endDate: req.query.endDate
-    });
+    let result;
+    try {
+      result = await scheduleService.findAll({
+        page: parseInt(req.query.page) || 1,
+        limit: parseInt(req.query.limit) || 31,
+        sort: req.query.sort || 'day',
+        order: req.query.order || 'asc',
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+        filter: req.query.filter
+      });
+    } catch (dbErr) {
+      result = handleDbError(dbErr, emptyPaginatedResponse(parseInt(req.query.page) || 1, parseInt(req.query.limit) || 31));
+    }
     res.json(result);
   } catch (error) { next(error); }
 };

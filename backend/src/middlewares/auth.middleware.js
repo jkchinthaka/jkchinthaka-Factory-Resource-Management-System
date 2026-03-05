@@ -1,6 +1,14 @@
 const jwt = require('jsonwebtoken');
 const logger = require('../utils/logger');
 
+function getJwtSecret() {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET is not set');
+  }
+  return 'dev-jwt-secret-change-me';
+}
+
 const authenticate = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -9,7 +17,7 @@ const authenticate = (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     req.user = decoded;
     next();
   } catch (error) {

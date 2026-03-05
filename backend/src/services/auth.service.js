@@ -30,7 +30,7 @@ function shouldUseDevAuthFallback(error) {
   if (!fallbackEnabled || process.env.NODE_ENV === 'production') return false;
 
   const message = String(error?.message || '').toLowerCase();
-  return message.includes('failed to connect') || message.includes('econnrefused') || message.includes('timeout');
+  return message.includes('failed to connect') || message.includes('econnrefused') || message.includes('timeout') || message.includes('login failed') || message.includes('not connected');
 }
 
 function buildLoginResponse(user) {

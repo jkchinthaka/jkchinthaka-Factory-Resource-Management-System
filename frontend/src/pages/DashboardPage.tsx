@@ -45,14 +45,14 @@ export default function DashboardPage() {
   };
 
   const cards = kpis ? [
-    { title: 'Total Electricity Cost', value: `$${kpis.electricity.total_cost.toLocaleString()}`, icon: Zap, color: 'text-yellow-500', bg: 'bg-yellow-50 dark:bg-yellow-950' },
-    { title: 'Total Water Usage', value: `${kpis.water.total_intake.toLocaleString()} m³`, icon: Droplets, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950' },
-    { title: 'Production Achievement', value: `${kpis.production.achievement_pct}%`, icon: Target, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-950' },
-    { title: 'Attendance Rate', value: `${kpis.attendance.attendance_pct}%`, icon: Users, color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-950' },
-    { title: 'Holidays', value: `${kpis.attendance.holidays} days`, icon: Calendar, color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950' },
-    { title: 'Cost / Unit', value: `$${kpis.kpi.cost_per_unit}`, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950' },
-    { title: 'Energy / Unit', value: `${kpis.kpi.energy_per_unit} kWh`, icon: TrendingUp, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-950' },
-    { title: 'Water / Unit', value: `${kpis.kpi.water_per_unit} m³`, icon: Droplets, color: 'text-cyan-500', bg: 'bg-cyan-50 dark:bg-cyan-950' },
+    { title: 'Total Electricity Cost', value: `$${(kpis.electricity?.total_cost ?? 0).toLocaleString()}`, icon: Zap, color: 'text-yellow-500', bg: 'bg-yellow-50 dark:bg-yellow-950' },
+    { title: 'Total Water Usage', value: `${(kpis.water?.total_intake ?? 0).toLocaleString()} m³`, icon: Droplets, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950' },
+    { title: 'Production Achievement', value: `${kpis.production?.achievement_pct ?? 0}%`, icon: Target, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-950' },
+    { title: 'Attendance Rate', value: `${kpis.attendance?.attendance_pct ?? 0}%`, icon: Users, color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-950' },
+    { title: 'Holidays', value: `${kpis.attendance?.holidays ?? 0} days`, icon: Calendar, color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-950' },
+    { title: 'Cost / Unit', value: `$${kpis.kpi?.cost_per_unit ?? 0}`, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950' },
+    { title: 'Energy / Unit', value: `${kpis.kpi?.energy_per_unit ?? 0} kWh`, icon: TrendingUp, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-950' },
+    { title: 'Water / Unit', value: `${kpis.kpi?.water_per_unit ?? 0} m³`, icon: Droplets, color: 'text-cyan-500', bg: 'bg-cyan-50 dark:bg-cyan-950' },
   ] : [];
 
   if (loading) {

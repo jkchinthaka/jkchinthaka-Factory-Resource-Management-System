@@ -5,7 +5,7 @@ class BaseService {
     this.table = tableName;
   }
 
-  async findAll({ page = 1, limit = 20, sort = 'id', order = 'desc', search, startDate, endDate, filters = {} }) {
+  async findAll({ page = 1, limit = 20, sort = 'id', order = 'desc', search, startDate, endDate, filters = {}, filter }) {
     const offset = (page - 1) * limit;
     let where = ['1=1'];
     let params = [];
@@ -19,6 +19,19 @@ class BaseService {
       params.push(endDate);
     }
 
+    // Parse string filter format "column:value"
+    if (filter && typeof filter === 'string' && filter.includes(':')) {
+      const colonIdx = filter.indexOf(':');
+      const filterKey = filter.substring(0, colonIdx);
+      const filterValue = filter.substring(colonIdx + 1);
+      if (filterKey && filterValue) {
+        const allowedFilterCols = ['id', 'date', 'day', 'name', 'email', 'role', 'line_id', 'product_group', 'asset_id'];
+        if (allowedFilterCols.includes(filterKey)) {
+          filters[filterKey] = filterValue;
+        }
+      }
+    }
+
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         where.push(`${key} = ?`);
@@ -27,7 +40,7 @@ class BaseService {
     });
 
     const whereClause = where.join(' AND ');
-    const allowedSorts = ['id', 'date', 'created_at', 'name'];
+    const allowedSorts = ['id', 'date', 'created_at', 'name', 'day'];
     const safeSort = allowedSorts.includes(sort) ? sort : 'id';
     const safeOrder = order === 'asc' ? 'ASC' : 'DESC';
 

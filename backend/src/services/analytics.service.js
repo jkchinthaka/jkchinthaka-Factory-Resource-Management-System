@@ -2,35 +2,48 @@ const db = require('../models/db');
 
 class AnalyticsService {
   async getDashboardKPIs(year, month) {
-    const dateFilter = month
-      ? `YEAR(date) = ${parseInt(year)} AND MONTH(date) = ${parseInt(month)}`
-      : `YEAR(date) = ${parseInt(year)}`;
+    const safeYear = parseInt(year) || new Date().getFullYear();
+    const safeMonth = month ? parseInt(month) : null;
+
+    const dateCondition = safeMonth
+      ? 'YEAR(date) = ? AND MONTH(date) = ?'
+      : 'YEAR(date) = ?';
+    const dateParams = safeMonth ? [safeYear, safeMonth] : [safeYear];
+
+    const dayCondition = safeMonth
+      ? 'YEAR(day) = ? AND MONTH(day) = ?'
+      : 'YEAR(day) = ?';
+    const dayParams = safeMonth ? [safeYear, safeMonth] : [safeYear];
 
     // Electricity summary
     const [elec] = await db.query(
       `SELECT COALESCE(SUM(energy_kWh), 0) as total_kWh, COALESCE(SUM(cost), 0) as total_cost
-       FROM electricity_data WHERE ${dateFilter}`
+       FROM electricity_data WHERE ${dateCondition}`,
+      dateParams
     );
 
     // Water summary
     const [water] = await db.query(
       `SELECT COALESCE(SUM(intake), 0) as total_intake, COALESCE(SUM(cost), 0) as total_cost
-       FROM water_meter_data WHERE ${dateFilter}`
+       FROM water_meter_data WHERE ${dateCondition}`,
+      dateParams
     );
 
     // Production summary
     const [prod] = await db.query(
       `SELECT COALESCE(SUM(target), 0) as total_target, COALESCE(SUM(actual), 0) as total_actual
-       FROM production_target_new WHERE ${dateFilter}`
+       FROM production_target_new WHERE ${dateCondition}`,
+      dateParams
     );
 
     // Schedule summary
     const [sched] = await db.query(
       `SELECT COUNT(*) as total_days,
               SUM(CASE WHEN is_holiday = 1 THEN 1 ELSE 0 END) as holidays,
-              SUM(ppu_planned + fpu_planned + fmu_planned) as total_planned,
-              SUM(ppu_actual + fpu_actual + fmu_actual) as total_actual
-       FROM work_schedule WHERE ${dateFilter.replace(/date/g, 'day')}`
+              COALESCE(SUM(ppu_planned + fpu_planned + fmu_planned), 0) as total_planned,
+              COALESCE(SUM(ppu_actual + fpu_actual + fmu_actual), 0) as total_actual
+       FROM work_schedule WHERE ${dayCondition}`,
+      dayParams
     );
 
     const totalTarget = parseFloat(prod[0].total_target) || 1;
