@@ -1,13 +1,20 @@
 const assetService = require('../services/asset.service');
+const { handleDbError, emptyPaginatedResponse } = require('../utils/db-fallback');
 
 const getAll = async (req, res, next) => {
   try {
-    const result = await assetService.findAll({
-      page: parseInt(req.query.page) || 1,
-      limit: parseInt(req.query.limit) || 50,
-      sort: req.query.sort || 'name',
-      order: req.query.order || 'asc'
-    });
+    let result;
+    try {
+      result = await assetService.findAll({
+        page: parseInt(req.query.page) || 1,
+        limit: parseInt(req.query.limit) || 50,
+        sort: req.query.sort || 'name',
+        order: req.query.order || 'asc',
+        filter: req.query.filter
+      });
+    } catch (dbErr) {
+      result = handleDbError(dbErr, emptyPaginatedResponse(parseInt(req.query.page) || 1, parseInt(req.query.limit) || 50));
+    }
     res.json(result);
   } catch (error) { next(error); }
 };

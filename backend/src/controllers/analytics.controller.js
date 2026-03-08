@@ -1,19 +1,30 @@
 const analyticsService = require('../services/analytics.service');
+const { handleDbError, defaultKPIs } = require('../utils/db-fallback');
 
 const getDashboardKPIs = async (req, res, next) => {
   try {
     const { year, month } = req.query;
-    const result = await analyticsService.getDashboardKPIs(
-      year || new Date().getFullYear(),
-      month
-    );
+    let result;
+    try {
+      result = await analyticsService.getDashboardKPIs(
+        year || new Date().getFullYear(),
+        month
+      );
+    } catch (dbErr) {
+      result = handleDbError(dbErr, defaultKPIs);
+    }
     res.json(result);
   } catch (error) { next(error); }
 };
 
 const getAlerts = async (req, res, next) => {
   try {
-    const result = await analyticsService.getAlerts();
+    let result;
+    try {
+      result = await analyticsService.getAlerts();
+    } catch (dbErr) {
+      result = handleDbError(dbErr, []);
+    }
     res.json(result);
   } catch (error) { next(error); }
 };

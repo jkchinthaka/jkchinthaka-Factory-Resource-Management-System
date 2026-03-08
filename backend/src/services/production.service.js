@@ -41,7 +41,7 @@ class ProductionService extends BaseService {
     const [rows] = await db.query(
       `SELECT MONTH(date) as month, 
               SUM(target) as total_target, SUM(actual) as total_actual,
-              ROUND(SUM(actual)/SUM(target)*100, 2) as achievement_pct,
+              ROUND(SUM(actual)*100.0/NULLIF(SUM(target), 0), 2) as achievement_pct,
               COUNT(DISTINCT line_id) as active_lines
        FROM production_target_new
        WHERE YEAR(date) = ?
@@ -56,7 +56,7 @@ class ProductionService extends BaseService {
     const [rows] = await db.query(
       `SELECT line_id, product_group,
               SUM(target) as total_target, SUM(actual) as total_actual,
-              ROUND(SUM(actual)/SUM(target)*100, 2) as efficiency
+              ROUND(SUM(actual)*100.0/NULLIF(SUM(target), 0), 2) as efficiency
        FROM production_target_new
        WHERE date BETWEEN ? AND ?
        GROUP BY line_id, product_group

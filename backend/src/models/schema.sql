@@ -59,15 +59,19 @@ CREATE TABLE electricity_data (
 
 -- Water meter data
 IF OBJECT_ID('dbo.water_meter_data', 'U') IS NULL
-CREATE TABLE water_meter_data (
+CREATE TABLE dbo.water_meter_data (
   id INT IDENTITY(1,1) PRIMARY KEY,
   date DATE NOT NULL,
   intake DECIMAL(12,2) NOT NULL,
-  ppu_reading DECIMAL(12,2),
-  fpu_reading DECIMAL(12,2),
-  chiller DECIMAL(12,2),
-  cooling_tower DECIMAL(12,2),
-  column_data NVARCHAR(MAX),
+  [PPU 1 Reading] DECIMAL(12,2),
+  [PPU 2 Reading] DECIMAL(12,2),
+  [FPU 1 Reading] DECIMAL(12,2),
+  [FPU 2 Reading] DECIMAL(12,2),
+  [Chiller Reading] DECIMAL(12,2),
+  [Cooling tower Reading] DECIMAL(12,2),
+  [Column 1] DECIMAL(12,2),
+  [Column 2] DECIMAL(12,2),
+  [Column 3] DECIMAL(12,2),
   cost DECIMAL(12,2),
   notes NVARCHAR(MAX),
   created_by INT,
@@ -141,6 +145,23 @@ CREATE TABLE alert_thresholds (
   updated_at DATETIME2 DEFAULT GETDATE()
 );
 
+-- User attendance
+IF OBJECT_ID('dbo.user_attendance', 'U') IS NULL
+CREATE TABLE user_attendance (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  attendance_date DATE NOT NULL,
+  user_id INT NOT NULL,
+  status NVARCHAR(16) NOT NULL DEFAULT 'deactive',
+  notes NVARCHAR(255) NULL,
+  marked_by INT NULL,
+  marked_at DATETIME2 NOT NULL DEFAULT GETDATE(),
+  updated_at DATETIME2 NOT NULL DEFAULT GETDATE(),
+  CONSTRAINT CK_user_attendance_status CHECK (status IN ('active', 'deactive')),
+  CONSTRAINT UQ_user_attendance_user_date UNIQUE (attendance_date, user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE NO ACTION,
+  FOREIGN KEY (marked_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
 -- Indexes (created separately for T-SQL)
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_electricity_date')
   CREATE INDEX idx_electricity_date ON electricity_data(date);
@@ -149,7 +170,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_electricity_asset')
   CREATE INDEX idx_electricity_asset ON electricity_data(asset_id);
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_water_date')
-  CREATE INDEX idx_water_date ON water_meter_data(date);
+  CREATE INDEX idx_water_date ON dbo.water_meter_data(date);
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_schedule_day')
   CREATE INDEX idx_schedule_day ON work_schedule(day);
@@ -168,6 +189,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_audit_entity')
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_audit_created')
   CREATE INDEX idx_audit_created ON audit_log(created_at);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_user_attendance_date')
+  CREATE INDEX idx_user_attendance_date ON user_attendance(attendance_date);
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_user_attendance_user')
+  CREATE INDEX idx_user_attendance_user ON user_attendance(user_id);
 
 -- Seed roles
 MERGE INTO roles AS target

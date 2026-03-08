@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const logger = require('./utils/logger');
 const db = require('./models/db');
+const { isDbConnectionError } = require('./utils/db-fallback');
 
 // Route imports
 const authRoutes = require('./routes/auth.routes');
@@ -17,6 +18,7 @@ const productionRoutes = require('./routes/production.routes');
 const reportRoutes = require('./routes/report.routes');
 const assetRoutes = require('./routes/asset.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
+const attendanceRoutes = require('./routes/attendance.routes');
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 5000;
@@ -57,6 +59,7 @@ app.use('/api/production', productionRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -66,6 +69,11 @@ app.use((req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
   logger.error(`${err.message} - ${req.method} ${req.originalUrl}`);
+  if (isDbConnectionError(err)) {
+    return res.status(503).json({
+      error: 'Database unavailable. Start SQL Server on localhost:1433 or update backend/.env.'
+    });
+  }
   res.status(err.status || 500).json({
     error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
   });

@@ -30,11 +30,15 @@ export interface WaterMeterData {
   id: number;
   date: string;
   intake: number;
-  ppu_reading?: number;
-  fpu_reading?: number;
-  chiller?: number;
-  cooling_tower?: number;
-  column_data?: Record<string, unknown>;
+  ppu1_reading?: number;
+  ppu2_reading?: number;
+  fpu1_reading?: number;
+  fpu2_reading?: number;
+  chiller_reading?: number;
+  cooling_tower_reading?: number;
+  column1?: number;
+  column2?: number;
+  column3?: number;
   cost?: number;
   notes?: string;
 }
@@ -72,6 +76,33 @@ export interface Asset {
   location?: string;
   description?: string;
   is_active?: boolean;
+}
+
+export interface AttendanceEntry {
+  id?: number;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  role: string;
+  user_enabled: boolean;
+  attendance_date?: string;
+  status?: 'active' | 'deactive' | null;
+  notes?: string;
+  marked_by?: number | null;
+  marked_at?: string;
+  updated_at?: string;
+}
+
+export interface AttendanceDateResponse {
+  date: string;
+  data: AttendanceEntry[];
+}
+
+export interface AttendanceSummary {
+  date: string;
+  total_marked: number;
+  total_active: number;
+  total_deactive: number;
 }
 
 export interface PaginatedResponse<T> {
