@@ -32,8 +32,15 @@ class AttendanceService {
     await this.ensureTablePromise;
   }
 
-  async getByDate(attendanceDate) {
+  async getByDate(attendanceDate, scopeUserId = null) {
     await this.ensureTable();
+
+    const params = [attendanceDate];
+    let userFilter = '';
+    if (scopeUserId !== null) {
+      userFilter = 'AND u.id = ?';
+      params.push(scopeUserId);
+    }
 
     const [rows] = await db.query(
       `SELECT
@@ -53,9 +60,9 @@ class AttendanceService {
        JOIN roles r ON r.id = u.role_id
        LEFT JOIN user_attendance ua
          ON ua.user_id = u.id AND ua.attendance_date = ?
-       WHERE u.is_active = 1
+       WHERE u.is_active = 1 ${userFilter}
        ORDER BY u.name ASC`,
-      [attendanceDate]
+      params
     );
 
     return { date: attendanceDate, data: rows };
@@ -95,8 +102,15 @@ class AttendanceService {
     return rows[0] || null;
   }
 
-  async getSummary(attendanceDate) {
+  async getSummary(attendanceDate, scopeUserId = null) {
     await this.ensureTable();
+
+    const params = [attendanceDate];
+    let userFilter = '';
+    if (scopeUserId !== null) {
+      userFilter = 'AND user_id = ?';
+      params.push(scopeUserId);
+    }
 
     const [rows] = await db.query(
       `SELECT
@@ -104,8 +118,8 @@ class AttendanceService {
          SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS total_active,
          SUM(CASE WHEN status = 'deactive' THEN 1 ELSE 0 END) AS total_deactive
        FROM user_attendance
-       WHERE attendance_date = ?`,
-      [attendanceDate]
+       WHERE attendance_date = ? ${userFilter}`,
+      params
     );
 
     return {

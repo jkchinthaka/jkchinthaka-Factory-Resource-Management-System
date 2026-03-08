@@ -5,12 +5,15 @@ function defaultDate() {
   return new Date().toISOString().split('T')[0];
 }
 
+const ADMIN_ROLES = ['Admin', 'Manager'];
+
 const getByDate = async (req, res, next) => {
   try {
     const attendanceDate = req.query.date || defaultDate();
+    const scopeUserId = ADMIN_ROLES.includes(req.user?.role) ? null : req.user?.id;
     let result;
     try {
-      result = await attendanceService.getByDate(attendanceDate);
+      result = await attendanceService.getByDate(attendanceDate, scopeUserId);
     } catch (dbErr) {
       result = handleDbError(dbErr, { date: attendanceDate, data: [] });
     }
@@ -29,6 +32,12 @@ const mark = async (req, res, next) => {
       notes: req.body.notes,
       marked_by: req.user?.id
     };
+
+    // Non-admin/manager users may only mark their own attendance
+    if (!ADMIN_ROLES.includes(req.user?.role) && parseInt(payload.user_id) !== req.user?.id) {
+      return res.status(403).json({ error: 'You can only mark your own attendance.' });
+    }
+
     const result = await attendanceService.mark(payload);
     res.status(201).json(result);
   } catch (error) {
@@ -39,9 +48,10 @@ const mark = async (req, res, next) => {
 const getSummary = async (req, res, next) => {
   try {
     const attendanceDate = req.query.date || defaultDate();
+    const scopeUserId = ADMIN_ROLES.includes(req.user?.role) ? null : req.user?.id;
     let result;
     try {
-      result = await attendanceService.getSummary(attendanceDate);
+      result = await attendanceService.getSummary(attendanceDate, scopeUserId);
     } catch (dbErr) {
       result = handleDbError(dbErr, {
         date: attendanceDate,

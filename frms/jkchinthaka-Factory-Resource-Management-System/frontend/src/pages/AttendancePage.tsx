@@ -4,6 +4,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { useToast } from '../components/ui/toast-provider';
+import { useAuth } from '../hooks/useAuth';
 import { attendanceService } from '../services/dataService';
 import type { AttendanceDateResponse, AttendanceEntry, AttendanceSummary } from '../models/types';
 import {
@@ -204,8 +205,156 @@ function SwipeCard({
   );
 }
 
+// ── personal (self) view – shown to Data Entry users ─────────────────────────
+function MyAttendanceView({
+  selectedDate,
+  setSelectedDate,
+  entry,
+  loading,
+  saving,
+  onRefresh,
+  onMark,
+}: {
+  selectedDate: string;
+  setSelectedDate: (d: string) => void;
+  entry: AttendanceEntry | null;
+  loading: boolean;
+  saving: boolean;
+  onRefresh: () => void;
+  onMark: (entry: AttendanceEntry, status: 'active' | 'deactive') => void;
+}) {
+  const isActive   = entry?.status === 'active';
+  const isDeactive = entry?.status === 'deactive';
+
+  // today-only: prevent marking future / past dates as self-mark (optional UX guard)
+  const isToday = selectedDate === todayString();
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5 pb-8 max-w-lg mx-auto">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <CalendarDays className="h-6 w-6 text-emerald-500" />
+            My Attendance
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-3">
+            <span className="flex items-center gap-1 text-emerald-600"><ChevronRight className="h-4 w-4" /> Swipe right → Active</span>
+            <span className="flex items-center gap-1 text-red-500"><ChevronLeft className="h-4 w-4" /> Swipe left → Deactive</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            value={selectedDate}
+            onChange={e => setSelectedDate(e.target.value)}
+            className="w-[175px]"
+          />
+          <Button variant="outline" size="sm" onClick={onRefresh} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+          <p className="text-sm">Loading your record...</p>
+        </div>
+      ) : !entry ? (
+        <Card className="border-dashed">
+          <CardContent className="p-10 flex flex-col items-center gap-3 text-muted-foreground">
+            <Clock className="h-10 w-10 opacity-30" />
+            <p className="text-sm">No attendance record for this date yet.</p>
+            <p className="text-xs opacity-60">Use the buttons or swipe to mark yourself.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* swipeable self-mark card */}
+          {entry && (
+            <SwipeCard
+              entry={entry}
+              saving={saving}
+              onMark={onMark}
+            />
+          )}
+
+          {/* big status display */}
+          <Card className={`border-2 shadow-md ${
+            isActive ? 'border-emerald-400' : isDeactive ? 'border-red-400' : 'border-amber-300'
+          }`}>
+            <CardContent className="p-6 flex flex-col items-center gap-5">
+              <div className={`h-20 w-20 rounded-full flex items-center justify-center text-white text-2xl font-bold ${avatarColor(entry.user_name)}`}>
+                {saving ? <Loader2 className="h-7 w-7 animate-spin text-white" /> : getInitials(entry.user_name)}
+              </div>
+
+              <div className="text-center">
+                <p className="font-bold text-lg">{entry.user_name}</p>
+                <p className="text-sm text-muted-foreground">{entry.user_email}</p>
+                <span className={`mt-2 inline-block text-xs font-medium px-2 py-0.5 rounded-full ${roleBadgeColor(entry.role)}`}>
+                  {entry.role}
+                </span>
+              </div>
+
+              <div className={`w-full rounded-2xl flex flex-col items-center py-8 gap-3 ${
+                isActive   ? 'bg-emerald-50 dark:bg-emerald-950' :
+                isDeactive ? 'bg-red-50 dark:bg-red-950' :
+                             'bg-amber-50 dark:bg-amber-950'
+              }`}>
+                {isActive ? (
+                  <><CheckCircle2 className="h-14 w-14 text-emerald-500" /><p className="text-2xl font-extrabold text-emerald-600">Present</p></>
+                ) : isDeactive ? (
+                  <><XCircle className="h-14 w-14 text-red-500" /><p className="text-2xl font-extrabold text-red-600">Absent</p></>
+                ) : (
+                  <><Clock className="h-14 w-14 text-amber-500" /><p className="text-2xl font-extrabold text-amber-600">Not Marked Yet</p></>
+                )}
+              </div>
+
+              {/* quick action buttons */}
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => !saving && onMark(entry, 'active')}
+                  disabled={saving || isActive}
+                  className={`flex-1 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
+                    isActive
+                      ? 'bg-emerald-500 text-white cursor-default'
+                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-500 hover:text-white border border-emerald-200 dark:bg-emerald-950 dark:border-emerald-800'
+                  }`}
+                >
+                  <UserCheck className="h-4 w-4" /> Mark Present
+                </button>
+                <button
+                  onClick={() => !saving && onMark(entry, 'deactive')}
+                  disabled={saving || isDeactive}
+                  className={`flex-1 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
+                    isDeactive
+                      ? 'bg-red-500 text-white cursor-default'
+                      : 'bg-red-50 text-red-700 hover:bg-red-500 hover:text-white border border-red-200 dark:bg-red-950 dark:border-red-800'
+                  }`}
+                >
+                  <UserX className="h-4 w-4" /> Mark Absent
+                </button>
+              </div>
+
+              {entry.marked_at && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  Marked at {new Date(entry.marked_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </motion.div>
+  );
+}
+
 // ── main page ────────────────────────────────────────────────────────────────
 export default function AttendancePage() {
+  const { user } = useAuth();
+  const isAdminOrManager = user?.role === 'Admin' || user?.role === 'Manager';
+
   const [selectedDate, setSelectedDate]   = useState(todayString());
   const [entries, setEntries]             = useState<AttendanceEntry[]>([]);
   const [summary, setSummary]             = useState<AttendanceSummary>({
@@ -299,6 +448,24 @@ export default function AttendancePage() {
     { key: 'active',   label: 'Active',   count: summary.total_active },
     { key: 'deactive', label: 'Deactive', count: summary.total_deactive },
   ];
+
+  // ── Data Entry users: personal interactive view ────────────────────────────
+  if (!isAdminOrManager) {
+    const myEntry = entries.find(e => e.user_id === user?.id) ?? null;
+    return (
+      <MyAttendanceView
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        entry={myEntry}
+        loading={loading}
+        saving={savingUserId === user?.id}
+        onRefresh={loadData}
+        onMark={markAttendance}
+      />
+    );
+  }
+
+  // ── Admin / Manager: full management view ──────────────────────────────────
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5 pb-8">

@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: fupms-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node setup-db.js && node src/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true        # Render auto-generates a secure random value
+      - key: DB_HOST
+        sync: false                # Set this manually in Render dashboard
+      - key: DB_PORT
+        value: "1433"
+      - key: DB_USER
+        sync: false                # Set this manually in Render dashboard
+      - key: DB_PASSWORD
+        sync: false                # Set this manually in Render dashboard
+      - key: DB_NAME
+        sync: false                # Set this manually in Render dashboard
+      - key: DB_ENCRYPT
+        value: "true"
+      - key: DB_TRUST_CERT
+        value: "true"
+      - key: FRONTEND_URL
+        sync: false                # Set to your Vercel URL e.g. https://fupms.vercel.app

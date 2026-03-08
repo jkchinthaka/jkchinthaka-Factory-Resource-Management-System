@@ -21,11 +21,16 @@ const analyticsRoutes = require('./routes/analytics.routes');
 const attendanceRoutes = require('./routes/attendance.routes');
 
 const app = express();
-const PORT = process.env.BACKEND_PORT || 5000;
+// Render injects PORT; fallback to BACKEND_PORT for local Docker, then 5000
+const PORT = process.env.PORT || process.env.BACKEND_PORT || 5000;
 
 // Security middleware
 app.use(helmet());
-app.use(cors({ origin: process.env.FRONTEND_URL || '*', credentials: true }));
+// origin: true mirrors the request origin (required when credentials:true — '*' is rejected by browsers)
+const corsOrigin = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',')
+  : true;
+app.use(cors({ origin: corsOrigin, credentials: true }));
 
 // Rate limiting
 const limiter = rateLimit({
