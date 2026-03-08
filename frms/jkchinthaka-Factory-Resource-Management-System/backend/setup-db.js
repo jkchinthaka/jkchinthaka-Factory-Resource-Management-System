@@ -9,7 +9,7 @@ function getDbConfig() {
     port: parseInt(process.env.DB_PORT || '1433'),
     user: process.env.DB_USER || 'nelna_user',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'fupms',
+    database: process.env.DB_NAME || 'NELNA_APP',
     options: {
       encrypt: process.env.DB_ENCRYPT === 'true',
       trustServerCertificate: process.env.DB_TRUST_CERT === 'true'
@@ -19,7 +19,7 @@ function getDbConfig() {
 
 async function run() {
   const config = getDbConfig();
-  console.log(`Connecting to ${config.database}...`);
+  console.log(`Connecting to ${config.database} as ${config.user}...`);
 
   const pool = await sql.connect(config);
 
@@ -39,8 +39,12 @@ async function run() {
 
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
-    await pool.query(batch);
-    console.log(`  Batch ${i + 1}/${batches.length} OK`);
+    try {
+      await pool.query(batch);
+      console.log(`  Batch ${i + 1}/${batches.length} OK`);
+    } catch (e) {
+      console.log(`  Batch ${i + 1}/${batches.length} skipped: ${e.message.split('\n')[0]}`);
+    }
   }
 
   const verifyWater = await pool.query("SELECT OBJECT_ID('dbo.water_meter_data', 'U') AS object_id");

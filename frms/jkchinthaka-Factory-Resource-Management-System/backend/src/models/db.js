@@ -4,7 +4,7 @@ const server   = process.env.DB_HOST     || 'host.docker.internal';
 const port     = parseInt(process.env.DB_PORT     || '1433');
 const user     = process.env.DB_USER     || 'nelna_user';
 const password = process.env.DB_PASSWORD || 'Nelna@123';
-const dbName   = process.env.DB_NAME     || 'nelnaapp';
+const dbName   = process.env.DB_NAME     || 'NELNA_APP';
 
 const baseOpts = {
   encrypt: process.env.DB_ENCRYPT     !== 'false',
@@ -14,50 +14,14 @@ const baseOpts = {
   requestTimeout: 30000
 };
 
-// Step 1 (run once): connect to master, create the target database if missing,
-// then create a database-level user so the login succeeds.
-async function ensureDatabaseAndUser() {
-  const masterPool = new sql.ConnectionPool({
-    server, port, user, password,
-    options: baseOpts,
-    pool: { max: 1, min: 0 }
-  });
-  try {
-    await masterPool.connect();
-
-    // Create the database if it does not exist
-    await masterPool.request().query(
-      `IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = N'${dbName}')
-         CREATE DATABASE [${dbName}]`
-    );
-
-    // Grant access inside the target database via cross-db sp_executesql
-    try {
-      await masterPool.request().query(`
-        EXEC [${dbName}].sys.sp_executesql N'
-          IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N''${user}'')
-          BEGIN
-            CREATE USER [${user}] FOR LOGIN [${user}];
-            ALTER ROLE db_owner ADD MEMBER [${user}];
-          END
-        '
-      `);
-    } catch (_) {
-      // User may already have access (sysadmin, db_owner, etc.)
-    }
-  } catch (err) {
-    // Continue even if setup fails; the actual connect() below will surface the real error
-    console.warn('[db] Database setup warning:', err.originalError?.message || err.message);
-  } finally {
-    try { await masterPool.close(); } catch (_) {}
-  }
-}
+// The database NELNA_APP already exists on the host SQL Server.
+// No setup needed — connect directly.
 
 let poolPromise = null;
 
 function getPool() {
   if (!poolPromise) {
-    poolPromise = ensureDatabaseAndUser()
+    poolPromise = Promise.resolve()
       .then(() => {
         const pool = new sql.ConnectionPool({
           server, port, user, password,

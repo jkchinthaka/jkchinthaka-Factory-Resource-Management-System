@@ -6,7 +6,8 @@ COPY package*.json ./
 RUN npm install --only=production
 
 COPY src ./src
+COPY setup-db.js ./
 
 EXPOSE 5000
 
-CMD ["node", "src/index.js"]
+CMD ["sh", "-c", "node setup-db.js && node src/index.js"]

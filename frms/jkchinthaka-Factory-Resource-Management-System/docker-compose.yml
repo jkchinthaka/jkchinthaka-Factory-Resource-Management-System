@@ -9,8 +9,8 @@ services:
       DB_HOST: host.docker.internal
       DB_PORT: 1433
       DB_USER: nelna_user
-      DB_PASSWORD: Nelna@123
-      DB_NAME: nelnaapp
+      DB_PASSWORD: "Nelna@123"
+      DB_NAME: NELNA_APP
       DB_ENCRYPT: "true"
       DB_TRUST_CERT: "true"
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
