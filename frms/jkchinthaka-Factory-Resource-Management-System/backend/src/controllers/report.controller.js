@@ -6,8 +6,9 @@ const waterService = require('../services/water.service');
 const generateElectricityReport = async (req, res, next) => {
   try {
     const { startDate, endDate, format = 'xlsx' } = req.query;
-    const start = startDate || '2025-01-01';
-    const end = endDate || '2025-12-31';
+    const currentYear = new Date().getFullYear();
+    const start = startDate || `${currentYear}-01-01`;
+    const end = endDate || `${currentYear}-12-31`;
 
     const [data] = await db.query(
       `SELECT e.*, a.name as asset_name FROM electricity_data e
@@ -41,11 +42,12 @@ const generateWaterReport = async (req, res, next) => {
     await waterService.ensureTable();
 
     const { startDate, endDate, format = 'xlsx' } = req.query;
-    const start = startDate || '2025-01-01';
-    const end = endDate || '2025-12-31';
+    const currentYear = new Date().getFullYear();
+    const start = startDate || `${currentYear}-01-01`;
+    const end = endDate || `${currentYear}-12-31`;
 
     const [data] = await db.query(
-      `SELECT * FROM dbo.water_meter_data WHERE date BETWEEN ? AND ? ORDER BY date`,
+      `SELECT * FROM water_meter_data WHERE date BETWEEN ? AND ? ORDER BY date`,
       [start, end]
     );
 
@@ -73,8 +75,9 @@ const generateWaterReport = async (req, res, next) => {
 const generateProductionReport = async (req, res, next) => {
   try {
     const { startDate, endDate, format = 'xlsx' } = req.query;
-    const start = startDate || '2025-01-01';
-    const end = endDate || '2025-12-31';
+    const currentYear = new Date().getFullYear();
+    const start = startDate || `${currentYear}-01-01`;
+    const end = endDate || `${currentYear}-12-31`;
 
     const [data] = await db.query(
       `SELECT * FROM production_target_new WHERE date BETWEEN ? AND ? ORDER BY date, line_id`,

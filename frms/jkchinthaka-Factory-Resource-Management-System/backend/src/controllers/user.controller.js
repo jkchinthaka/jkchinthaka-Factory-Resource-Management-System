@@ -95,7 +95,8 @@ const getAll = async (req, res, next) => {
       const [users] = await db.query(
         `SELECT u.id, u.name, u.email, r.name as role, u.is_active, u.last_login, u.created_at
          FROM users u JOIN roles r ON u.role_id = r.id
-         ORDER BY u.created_at DESC OFFSET ? ROWS FETCH NEXT ? ROWS ONLY`,
+         ORDER BY u.created_at DESC
+         OFFSET ? ROWS FETCH NEXT ? ROWS ONLY`,
         [offset, parsedLimit]
       );
 

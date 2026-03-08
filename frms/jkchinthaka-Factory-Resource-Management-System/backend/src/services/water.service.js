@@ -1,7 +1,7 @@
 const BaseService = require('./base.service');
 const db = require('../models/db');
 
-// Mapping from API field names to DB column names (with spaces/brackets)
+// Mapping from API field names to DB column names (with spaces)
 const COLUMN_MAP = {
   ppu1_reading: '[PPU 1 Reading]',
   ppu2_reading: '[PPU 2 Reading]',
@@ -29,44 +29,34 @@ const REVERSE_MAP = {
 
 class WaterService extends BaseService {
   constructor() {
-    super('dbo.water_meter_data');
+    super('water_meter_data');
     this.ensureTablePromise = null;
   }
 
   async ensureTable() {
     if (!this.ensureTablePromise) {
       this.ensureTablePromise = db.query(`
-        IF OBJECT_ID('dbo.water_meter_data', 'U') IS NULL
-        BEGIN
-          CREATE TABLE dbo.water_meter_data (
-            id INT IDENTITY(1,1) PRIMARY KEY,
-            date DATE NOT NULL,
-            intake DECIMAL(12,2) NOT NULL,
-            [PPU 1 Reading] DECIMAL(12,2) NULL,
-            [PPU 2 Reading] DECIMAL(12,2) NULL,
-            [FPU 1 Reading] DECIMAL(12,2) NULL,
-            [FPU 2 Reading] DECIMAL(12,2) NULL,
-            [Chiller Reading] DECIMAL(12,2) NULL,
-            [Cooling tower Reading] DECIMAL(12,2) NULL,
-            [Column 1] DECIMAL(12,2) NULL,
-            [Column 2] DECIMAL(12,2) NULL,
-            [Column 3] DECIMAL(12,2) NULL,
-            cost DECIMAL(12,2) NULL,
-            notes NVARCHAR(MAX) NULL,
-            created_by INT NULL,
-            created_at DATETIME2 DEFAULT GETDATE(),
-            updated_at DATETIME2 DEFAULT GETDATE()
-          );
-        END;
-
-        IF NOT EXISTS (
-          SELECT 1
-          FROM sys.indexes
-          WHERE name = 'idx_water_date' AND object_id = OBJECT_ID('dbo.water_meter_data')
+        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'water_meter_data') AND type = N'U')
+        CREATE TABLE water_meter_data (
+          id INT IDENTITY(1,1) PRIMARY KEY,
+          date DATE NOT NULL,
+          intake DECIMAL(12,2) NOT NULL,
+          [PPU 1 Reading] DECIMAL(12,2) NULL,
+          [PPU 2 Reading] DECIMAL(12,2) NULL,
+          [FPU 1 Reading] DECIMAL(12,2) NULL,
+          [FPU 2 Reading] DECIMAL(12,2) NULL,
+          [Chiller Reading] DECIMAL(12,2) NULL,
+          [Cooling tower Reading] DECIMAL(12,2) NULL,
+          [Column 1] DECIMAL(12,2) NULL,
+          [Column 2] DECIMAL(12,2) NULL,
+          [Column 3] DECIMAL(12,2) NULL,
+          cost DECIMAL(12,2) NULL,
+          notes NVARCHAR(MAX) NULL,
+          created_by INT NULL,
+          created_at DATETIME2 DEFAULT GETDATE(),
+          updated_at DATETIME2 DEFAULT GETDATE(),
+          FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
         )
-        BEGIN
-          CREATE INDEX idx_water_date ON dbo.water_meter_data(date);
-        END;
       `).catch((error) => {
         this.ensureTablePromise = null;
         throw error;
@@ -129,7 +119,7 @@ class WaterService extends BaseService {
     const cols = keys.join(', ');
 
     const [result] = await db.query(
-      `INSERT INTO dbo.water_meter_data (${cols}) VALUES (${placeholders}); SELECT SCOPE_IDENTITY() AS insertId`,
+      `INSERT INTO water_meter_data (${cols}) VALUES (${placeholders}); SELECT SCOPE_IDENTITY() AS insertId`,
       values
     );
     return { id: result.insertId, ...data };
@@ -143,7 +133,7 @@ class WaterService extends BaseService {
     const setClause = keys.map(k => `${k} = ?`).join(', ');
 
     await db.query(
-      `UPDATE dbo.water_meter_data SET ${setClause} WHERE id = ?`,
+      `UPDATE water_meter_data SET ${setClause} WHERE id = ?`,
       [...values, id]
     );
     return this.findById(id);
@@ -154,7 +144,7 @@ class WaterService extends BaseService {
     const [rows] = await db.query(
       `SELECT MONTH(date) as month, SUM(intake) as total_intake,
               AVG(intake) as avg_intake, SUM(cost) as total_cost, COUNT(*) as readings
-        FROM dbo.water_meter_data
+         FROM water_meter_data
        WHERE YEAR(date) = ?
        GROUP BY MONTH(date)
        ORDER BY month`,
@@ -171,7 +161,7 @@ class WaterService extends BaseService {
               SUM([FPU 1 Reading]) as total_fpu1, SUM([FPU 2 Reading]) as total_fpu2,
               SUM([Chiller Reading]) as total_chiller,
               SUM([Cooling tower Reading]) as total_cooling
-        FROM dbo.water_meter_data
+        FROM water_meter_data
        WHERE date BETWEEN ? AND ?
        GROUP BY date ORDER BY date`,
       [startDate, endDate]

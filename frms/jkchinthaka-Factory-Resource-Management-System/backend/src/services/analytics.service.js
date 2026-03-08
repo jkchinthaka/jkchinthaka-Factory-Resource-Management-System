@@ -28,7 +28,7 @@ class AnalyticsService {
     // Water summary
     const [water] = await db.query(
       `SELECT COALESCE(SUM(intake), 0) as total_intake, COALESCE(SUM(cost), 0) as total_cost
-       FROM dbo.water_meter_data WHERE ${dateCondition}`,
+              FROM water_meter_data WHERE ${dateCondition}`,
       dateParams
     );
 
@@ -104,7 +104,7 @@ class AnalyticsService {
       }
       if (t.metric === 'water_daily_intake') {
         const [recent] = await db.query(
-          `SELECT date, SUM(intake) as total FROM dbo.water_meter_data WHERE date >= DATEADD(DAY, -7, GETDATE()) GROUP BY date HAVING SUM(intake) > ?`,
+          `SELECT date, SUM(intake) as total FROM water_meter_data WHERE date >= DATEADD(DAY, -7, GETDATE()) GROUP BY date HAVING SUM(intake) > ?`,
           [t.warning_threshold]
         );
         recent.forEach(r => {

@@ -1,26 +1,4 @@
-version: '3.8'
-
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: fupms-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: fupms_db
-      MYSQL_USER: fupms_user
-      MYSQL_PASSWORD: fupms_password
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./backend/src/models/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   backend:
     build:
       context: ./backend
@@ -28,11 +6,13 @@ services:
     container_name: fupms-backend
     restart: unless-stopped
     environment:
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: fupms_user
-      DB_PASSWORD: fupms_password
-      DB_NAME: fupms_db
+      DB_HOST: host.docker.internal
+      DB_PORT: 1433
+      DB_USER: nelna_user
+      DB_PASSWORD: Nelna@123
+      DB_NAME: nelnaapp
+      DB_ENCRYPT: "true"
+      DB_TRUST_CERT: "true"
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       JWT_EXPIRES_IN: 24h
       PORT: 5000
@@ -40,9 +20,6 @@ services:
       CORS_ORIGIN: http://localhost
     ports:
       - "5000:5000"
-    depends_on:
-      mysql:
-        condition: service_healthy
 
   frontend:
     build:
@@ -54,6 +31,3 @@ services:
       - "80:80"
     depends_on:
       - backend
-
-volumes:
-  mysql_data:

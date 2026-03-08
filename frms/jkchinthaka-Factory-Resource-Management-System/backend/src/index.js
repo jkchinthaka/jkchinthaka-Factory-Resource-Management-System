@@ -74,8 +74,16 @@ app.use((err, req, res, next) => {
       error: 'Database unavailable. Start SQL Server on localhost:1433 or update backend/.env.'
     });
   }
+  
+  const isProduction = process.env.NODE_ENV === 'production';
+  let message = err.message || 'Internal server error';
+
+  if (isProduction || message.toLowerCase().includes('mssql') || message.toLowerCase().includes('timeout') || message.toLowerCase().includes('sql')) {
+    message = 'Internal server error';
+  }
+
   res.status(err.status || 500).json({
-    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
+    error: message
   });
 });
 
@@ -89,7 +97,8 @@ async function startServer() {
       logger.info(`FUPMS Backend running on port ${PORT}`);
     });
   } catch (error) {
-    logger.error('Failed to connect to database:', error.message);
+    const detail = error.originalError?.message || error.message || error.code || String(error);
+    logger.error(`Failed to connect to database: ${detail}`);
     logger.info('Starting server without database connection...');
     app.listen(PORT, () => {
       logger.info(`FUPMS Backend running on port ${PORT} (no DB)`);

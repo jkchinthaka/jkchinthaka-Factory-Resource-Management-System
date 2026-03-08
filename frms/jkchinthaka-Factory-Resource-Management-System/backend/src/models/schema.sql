@@ -1,8 +1,8 @@
 -- FUPMS Database Schema (SQL Server / T-SQL)
 -- Factory Utility & Production Management System
+-- All statements are idempotent (IF NOT EXISTS guards).
 
--- Roles table
-IF OBJECT_ID('dbo.roles', 'U') IS NULL
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'roles') AND type = N'U')
 CREATE TABLE roles (
   id INT IDENTITY(1,1) PRIMARY KEY,
   name NVARCHAR(50) NOT NULL UNIQUE,
@@ -11,8 +11,7 @@ CREATE TABLE roles (
   updated_at DATETIME2 DEFAULT GETDATE()
 );
 
--- Users table
-IF OBJECT_ID('dbo.users', 'U') IS NULL
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'users') AND type = N'U')
 CREATE TABLE users (
   id INT IDENTITY(1,1) PRIMARY KEY,
   name NVARCHAR(100) NOT NULL,
@@ -23,11 +22,10 @@ CREATE TABLE users (
   last_login DATETIME2 NULL,
   created_at DATETIME2 DEFAULT GETDATE(),
   updated_at DATETIME2 DEFAULT GETDATE(),
-  FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE NO ACTION
+  FOREIGN KEY (role_id) REFERENCES roles(id)
 );
 
--- Assets table
-IF OBJECT_ID('dbo.assets', 'U') IS NULL
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'assets') AND type = N'U')
 CREATE TABLE assets (
   id INT IDENTITY(1,1) PRIMARY KEY,
   name NVARCHAR(100) NOT NULL,
@@ -39,8 +37,7 @@ CREATE TABLE assets (
   updated_at DATETIME2 DEFAULT GETDATE()
 );
 
--- Electricity data
-IF OBJECT_ID('dbo.electricity_data', 'U') IS NULL
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'electricity_data') AND type = N'U')
 CREATE TABLE electricity_data (
   id INT IDENTITY(1,1) PRIMARY KEY,
   date DATE NOT NULL,
@@ -53,13 +50,12 @@ CREATE TABLE electricity_data (
   created_by INT,
   created_at DATETIME2 DEFAULT GETDATE(),
   updated_at DATETIME2 DEFAULT GETDATE(),
-  FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE NO ACTION,
+  FOREIGN KEY (asset_id) REFERENCES assets(id),
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Water meter data
-IF OBJECT_ID('dbo.water_meter_data', 'U') IS NULL
-CREATE TABLE dbo.water_meter_data (
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'water_meter_data') AND type = N'U')
+CREATE TABLE water_meter_data (
   id INT IDENTITY(1,1) PRIMARY KEY,
   date DATE NOT NULL,
   intake DECIMAL(12,2) NOT NULL,
@@ -80,8 +76,7 @@ CREATE TABLE dbo.water_meter_data (
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Work schedule
-IF OBJECT_ID('dbo.work_schedule', 'U') IS NULL
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'work_schedule') AND type = N'U')
 CREATE TABLE work_schedule (
   id INT IDENTITY(1,1) PRIMARY KEY,
   day DATE NOT NULL,
@@ -100,8 +95,7 @@ CREATE TABLE work_schedule (
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Production target
-IF OBJECT_ID('dbo.production_target_new', 'U') IS NULL
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'production_target_new') AND type = N'U')
 CREATE TABLE production_target_new (
   id INT IDENTITY(1,1) PRIMARY KEY,
   line_id NVARCHAR(50) NOT NULL,
@@ -110,7 +104,7 @@ CREATE TABLE production_target_new (
   date DATE NOT NULL,
   target DECIMAL(12,2) NOT NULL,
   actual DECIMAL(12,2) DEFAULT 0,
-  efficiency AS (CASE WHEN target > 0 THEN (actual / target) * 100 ELSE 0 END),
+  efficiency AS (CASE WHEN target > 0 THEN ROUND(actual * 100.0 / target, 2) ELSE 0 END) PERSISTED,
   notes NVARCHAR(MAX),
   created_by INT,
   created_at DATETIME2 DEFAULT GETDATE(),
@@ -118,8 +112,7 @@ CREATE TABLE production_target_new (
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Audit log
-IF OBJECT_ID('dbo.audit_log', 'U') IS NULL
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'audit_log') AND type = N'U')
 CREATE TABLE audit_log (
   id INT IDENTITY(1,1) PRIMARY KEY,
   user_id INT,
@@ -133,8 +126,7 @@ CREATE TABLE audit_log (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Alert thresholds
-IF OBJECT_ID('dbo.alert_thresholds', 'U') IS NULL
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'alert_thresholds') AND type = N'U')
 CREATE TABLE alert_thresholds (
   id INT IDENTITY(1,1) PRIMARY KEY,
   metric NVARCHAR(50) NOT NULL UNIQUE,
@@ -145,8 +137,7 @@ CREATE TABLE alert_thresholds (
   updated_at DATETIME2 DEFAULT GETDATE()
 );
 
--- User attendance
-IF OBJECT_ID('dbo.user_attendance', 'U') IS NULL
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'user_attendance') AND type = N'U')
 CREATE TABLE user_attendance (
   id INT IDENTITY(1,1) PRIMARY KEY,
   attendance_date DATE NOT NULL,
@@ -158,67 +149,224 @@ CREATE TABLE user_attendance (
   updated_at DATETIME2 NOT NULL DEFAULT GETDATE(),
   CONSTRAINT CK_user_attendance_status CHECK (status IN ('active', 'deactive')),
   CONSTRAINT UQ_user_attendance_user_date UNIQUE (attendance_date, user_id),
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE NO ACTION,
-  FOREIGN KEY (marked_by) REFERENCES users(id) ON DELETE SET NULL
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (marked_by) REFERENCES users(id) ON DELETE NO ACTION
 );
 
--- Indexes (created separately for T-SQL)
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_electricity_date')
+-- Indexes (guarded by name check)
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_electricity_date' AND object_id = OBJECT_ID('electricity_data'))
   CREATE INDEX idx_electricity_date ON electricity_data(date);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_electricity_asset')
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_electricity_asset' AND object_id = OBJECT_ID('electricity_data'))
   CREATE INDEX idx_electricity_asset ON electricity_data(asset_id);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_water_date')
-  CREATE INDEX idx_water_date ON dbo.water_meter_data(date);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_schedule_day')
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_water_date' AND object_id = OBJECT_ID('water_meter_data'))
+  CREATE INDEX idx_water_date ON water_meter_data(date);
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_schedule_day' AND object_id = OBJECT_ID('work_schedule'))
   CREATE INDEX idx_schedule_day ON work_schedule(day);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_production_date')
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_production_date' AND object_id = OBJECT_ID('production_target_new'))
   CREATE INDEX idx_production_date ON production_target_new(date);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_production_line')
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_production_line' AND object_id = OBJECT_ID('production_target_new'))
   CREATE INDEX idx_production_line ON production_target_new(line_id);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_audit_user')
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_audit_user' AND object_id = OBJECT_ID('audit_log'))
   CREATE INDEX idx_audit_user ON audit_log(user_id);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_audit_entity')
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_audit_entity' AND object_id = OBJECT_ID('audit_log'))
   CREATE INDEX idx_audit_entity ON audit_log(entity, entity_id);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_audit_created')
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_audit_created' AND object_id = OBJECT_ID('audit_log'))
   CREATE INDEX idx_audit_created ON audit_log(created_at);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_user_attendance_date')
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_user_attendance_date' AND object_id = OBJECT_ID('user_attendance'))
   CREATE INDEX idx_user_attendance_date ON user_attendance(attendance_date);
-
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_user_attendance_user')
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_user_attendance_user' AND object_id = OBJECT_ID('user_attendance'))
   CREATE INDEX idx_user_attendance_user ON user_attendance(user_id);
 
 -- Seed roles
-MERGE INTO roles AS target
-USING (VALUES
-  ('Admin', 'Full system access'),
-  ('Manager', 'View and manage data'),
-  ('Data Entry', 'Enter and edit data only')
-) AS source (name, description)
+MERGE roles AS target
+USING (VALUES ('Admin', 'Full system access'), ('Manager', 'View and manage data'), ('Data Entry', 'Enter and edit data only'))
+  AS source(name, description)
 ON target.name = source.name
-WHEN MATCHED THEN UPDATE SET description = source.description
 WHEN NOT MATCHED THEN INSERT (name, description) VALUES (source.name, source.description);
 
 -- Seed default admin user (password: Admin@123)
-IF NOT EXISTS (SELECT 1 FROM users WHERE email = 'admin@fupms.com')
+IF NOT EXISTS (SELECT * FROM users WHERE email = 'admin@fupms.com')
   INSERT INTO users (name, email, password_hash, role_id)
   VALUES ('System Admin', 'admin@fupms.com', '$2a$10$ZJ3aBAvb24umIRrz2JIuFetiNRlmQA32cb1L7aqt19xrYEDinmGCK', 1);
 
 -- Seed alert thresholds
-MERGE INTO alert_thresholds AS target
+MERGE alert_thresholds AS target
 USING (VALUES
   ('electricity_daily_kWh', 10000, 15000),
   ('water_daily_intake', 500, 800),
-  ('production_efficiency', 80, 60)
-) AS source (metric, warning_threshold, critical_threshold)
+  ('production_efficiency', 80, 60))
+  AS source(metric, warning, critical)
 ON target.metric = source.metric
-WHEN MATCHED THEN UPDATE SET warning_threshold = source.warning_threshold, critical_threshold = source.critical_threshold
-WHEN NOT MATCHED THEN INSERT (metric, warning_threshold, critical_threshold) VALUES (source.metric, source.warning_threshold, source.critical_threshold);
+WHEN NOT MATCHED THEN INSERT (metric, warning_threshold, critical_threshold) VALUES (source.metric, source.warning, source.critical)
+WHEN MATCHED THEN UPDATE SET warning_threshold = source.warning, critical_threshold = source.critical;
+
+CREATE TABLE IF NOT EXISTS roles (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL UNIQUE,
+  description VARCHAR(255),
+  created_at DATETIME DEFAULT NOW(),
+  updated_at DATETIME DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(150) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role_id INT NOT NULL DEFAULT 3,
+  is_active TINYINT(1) DEFAULT 1,
+  last_login DATETIME NULL,
+  created_at DATETIME DEFAULT NOW(),
+  updated_at DATETIME DEFAULT NOW(),
+  FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE NO ACTION
+);
+
+CREATE TABLE IF NOT EXISTS assets (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  location VARCHAR(150),
+  description TEXT,
+  is_active TINYINT(1) DEFAULT 1,
+  created_at DATETIME DEFAULT NOW(),
+  updated_at DATETIME DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS electricity_data (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  date DATE NOT NULL,
+  energy_kWh DECIMAL(12,2) NOT NULL,
+  cost DECIMAL(12,2) NOT NULL,
+  peak_kW DECIMAL(10,2),
+  off_peak_kWh DECIMAL(12,2),
+  asset_id INT NOT NULL,
+  notes TEXT,
+  created_by INT,
+  created_at DATETIME DEFAULT NOW(),
+  updated_at DATETIME DEFAULT NOW(),
+  FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE NO ACTION,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS water_meter_data (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  date DATE NOT NULL,
+  intake DECIMAL(12,2) NOT NULL,
+  `PPU 1 Reading` DECIMAL(12,2),
+  `PPU 2 Reading` DECIMAL(12,2),
+  `FPU 1 Reading` DECIMAL(12,2),
+  `FPU 2 Reading` DECIMAL(12,2),
+  `Chiller Reading` DECIMAL(12,2),
+  `Cooling tower Reading` DECIMAL(12,2),
+  `Column 1` DECIMAL(12,2),
+  `Column 2` DECIMAL(12,2),
+  `Column 3` DECIMAL(12,2),
+  cost DECIMAL(12,2),
+  notes TEXT,
+  created_by INT,
+  created_at DATETIME DEFAULT NOW(),
+  updated_at DATETIME DEFAULT NOW(),
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS work_schedule (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  day DATE NOT NULL,
+  is_holiday TINYINT(1) DEFAULT 0,
+  holiday_name VARCHAR(100),
+  ppu_planned INT DEFAULT 0,
+  ppu_actual INT DEFAULT 0,
+  fpu_planned INT DEFAULT 0,
+  fpu_actual INT DEFAULT 0,
+  fmu_planned INT DEFAULT 0,
+  fmu_actual INT DEFAULT 0,
+  notes TEXT,
+  created_by INT,
+  created_at DATETIME DEFAULT NOW(),
+  updated_at DATETIME DEFAULT NOW(),
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS production_target_new (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  line_id VARCHAR(50) NOT NULL,
+  product_group VARCHAR(100) NOT NULL,
+  production_unit VARCHAR(50) NOT NULL,
+  date DATE NOT NULL,
+  target DECIMAL(12,2) NOT NULL,
+  actual DECIMAL(12,2) DEFAULT 0,
+  efficiency DECIMAL(10,2) GENERATED ALWAYS AS (CASE WHEN target > 0 THEN (actual / target) * 100.0 ELSE 0 END) STORED,
+  notes TEXT,
+  created_by INT,
+  created_at DATETIME DEFAULT NOW(),
+  updated_at DATETIME DEFAULT NOW(),
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT,
+  action VARCHAR(50) NOT NULL,
+  entity VARCHAR(50) NOT NULL,
+  entity_id INT,
+  old_values TEXT,
+  new_values TEXT,
+  ip_address VARCHAR(45),
+  created_at DATETIME DEFAULT NOW(),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS alert_thresholds (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  metric VARCHAR(50) NOT NULL UNIQUE,
+  warning_threshold DECIMAL(12,2),
+  critical_threshold DECIMAL(12,2),
+  is_active TINYINT(1) DEFAULT 1,
+  created_at DATETIME DEFAULT NOW(),
+  updated_at DATETIME DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS user_attendance (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  attendance_date DATE NOT NULL,
+  user_id INT NOT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'deactive',
+  notes VARCHAR(255) NULL,
+  marked_by INT NULL,
+  marked_at DATETIME NOT NULL DEFAULT NOW(),
+  updated_at DATETIME NOT NULL DEFAULT NOW(),
+  CONSTRAINT CK_user_attendance_status CHECK (status IN ('active', 'deactive')),
+  CONSTRAINT UQ_user_attendance_user_date UNIQUE (attendance_date, user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE NO ACTION,
+  FOREIGN KEY (marked_by) REFERENCES users(id) ON DELETE NO ACTION
+);
+
+CREATE INDEX idx_electricity_date ON electricity_data(date);
+CREATE INDEX idx_electricity_asset ON electricity_data(asset_id);
+CREATE INDEX idx_water_date ON water_meter_data(date);
+CREATE INDEX idx_schedule_day ON work_schedule(day);
+CREATE INDEX idx_production_date ON production_target_new(date);
+CREATE INDEX idx_production_line ON production_target_new(line_id);
+CREATE INDEX idx_audit_user ON audit_log(user_id);
+CREATE INDEX idx_audit_entity ON audit_log(entity, entity_id);
+CREATE INDEX idx_audit_created ON audit_log(created_at);
+CREATE INDEX idx_user_attendance_date ON user_attendance(attendance_date);
+CREATE INDEX idx_user_attendance_user ON user_attendance(user_id);
+
+-- Seed roles
+INSERT INTO roles (name, description) VALUES
+  ('Admin', 'Full system access'),
+  ('Manager', 'View and manage data'),
+  ('Data Entry', 'Enter and edit data only')
+ON DUPLICATE KEY UPDATE description = VALUES(description);
+
+-- Seed default admin user (password: Admin@123)
+INSERT IGNORE INTO users (name, email, password_hash, role_id)
+VALUES ('System Admin', 'admin@fupms.com', '$2a$10$ZJ3aBAvb24umIRrz2JIuFetiNRlmQA32cb1L7aqt19xrYEDinmGCK', 1);
+
+-- Seed alert thresholds
+INSERT INTO alert_thresholds (metric, warning_threshold, critical_threshold) VALUES
+  ('electricity_daily_kWh', 10000, 15000),
+  ('water_daily_intake', 500, 800),
+  ('production_efficiency', 80, 60)
+ON DUPLICATE KEY UPDATE warning_threshold = VALUES(warning_threshold), critical_threshold = VALUES(critical_threshold);

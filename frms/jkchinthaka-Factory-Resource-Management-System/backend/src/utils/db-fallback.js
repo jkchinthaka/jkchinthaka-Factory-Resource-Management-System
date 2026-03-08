@@ -1,7 +1,6 @@
 const logger = require('./logger');
 
 function isDbConnectionError(error) {
-  if (process.env.NODE_ENV === 'production') return false;
   const msg = String(error?.message || '').toLowerCase();
   return msg.includes('failed to connect') || msg.includes('econnrefused') || msg.includes('timeout') || msg.includes('login failed') || msg.includes('not connected');
 }
